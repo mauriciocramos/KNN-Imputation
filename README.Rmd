@@ -44,10 +44,10 @@ Robert Tibshirani, Trevor Hastie, Balasubramanian Narasimhan, and Gilbert Chu (2
 
 ```{r, warning=FALSE}
 gene.expression.values <- khanmiss[-1, -(1:2)]
-rownames(gene.expression.values) <- 1:nrow(gene.expression.values)
-colnames(gene.expression.values) <- 1:ncol(gene.expression.values)
+rownames(gene.expression.values) <- paste0("G",1:nrow(gene.expression.values))
+colnames(gene.expression.values) <- paste0("S",1:ncol(gene.expression.values))
 gene.expression.values[] <- lapply(gene.expression.values[], function (x) as.numeric(levels(x)[x]))
-gene.expression.values <- as.matrix(gene.expression.values)
+gene.expression.values <- as.matrix(gene.expression.values)#[1:20, 1:4]
 str(gene.expression.values)
 ```
 
@@ -64,42 +64,59 @@ sprintf("%1.2f%%", 100*mean(missing))
 ### Histogram
 
 ```{r Histogram of Gene Expression Values}
-par(mfrow=c(1, 1), mar=c(4, 4, 2, 0), xaxt="s", yaxt="s", xaxs="r", yaxs="r")
-hist(gene.expression.values, pch=20, col=rgb(0,0,0,0.05), cex=0.1,
+hist(gene.expression.values, freq = FALSE, pch=20, col=rgb(0,0,0,0.03), cex=0.1,
      main = "Histogram of Gene Expression Values", xlab = "Gene Expression Values")
+## Normal Curve
+x <- gene.expression.values
+mean <- mean(gene.expression.values, na.rm = TRUE)
+sd <- sd(gene.expression.values, na.rm = TRUE)
+curve(dnorm(x, mean, sd), add = TRUE, col = "blue", lwd = 2)
+## Kernel density estimation
+lines(density(gene.expression.values, na.rm = TRUE), col = "red", lwd = 2)
+## Legend
+legend("topright", lwd = 2, col = c("blue", "red"), text.col = c("blue", "red"), legend = c("Normal Curve", "Kernel Density"))
 ```
 
 ### Matrix Plot
 
 ```{r Gene Expression Values by Gene}
 matplot(gene.expression.values, pch=20, cex=0.1, col=rgb(0,0,0,0.1),
-        xlab = "Genes", ylab = "Gene Expression Values", xlim=c(1,nrow(gene.expression.values)),
-        main = "Gene Expression Values by Gene")
+        xlim=c(1,nrow(gene.expression.values)),
+        main = "Gene Expression Values by Gene", 
+        xlab = "Genes", ylab = "Gene Expression Values")
 ```
 
 ### Transposed Matrix Plot
 
 ```{r Gene Expression Values by Samples}
 matplot(t(gene.expression.values), pch=20, cex=1, col=rgb(0,0,0,0.1),
-        xlab = "Samples", ylab = "Gene Expression Values", xlim=c(1,ncol(gene.expression.values)),
-        main = "Gene Expression Values by Samples")
+        xlim=c(1,ncol(gene.expression.values)),
+        main = "Gene Expression Values by Samples", 
+        xlab = "Samples", ylab = "Gene Expression Values")
 ```
 
 ### Matrix image
 
 ```{r Gene Expression Matrix image}
 image(x = 1:ncol(gene.expression.values), y = 1:nrow(gene.expression.values), z = t(gene.expression.values),
-      ylim=c(nrow(gene.expression.values),1), col=1, xlab = "Samples", ylab = "Gene", main="Missing Gene Expression Values")
+      ylim=c(nrow(gene.expression.values),1), col=1, xlab = "Samples", ylab = "Genes", main="Missing Gene Expression Values")
 ```
 
-### Hierarchical clustering
+### Hierarchical cluster of the Samples
+```{r}
+(hclust<- hclust(dist(t(gene.expression.values))))
+```
+```{r Hierarchical cluster of the Samples}
+plot(hclust, xlab = "Sample distance", main = "Hierarchical cluster of the Samples")
+```
+
+### Hierarchical cluster of the Genes
 
 ```{r}
 (hclust<- hclust(dist(gene.expression.values)))
 ```
-### Cluster Dendogram
-```{r Gene Expression Cluster Dendogram}
-plot(hclust, hang=0, labels= FALSE)
+```{r Hierarchical cluster of the Genes}
+plot(hclust, hang=0.1, labels = FALSE, xlab = "Gene distance", main = "Hierarchical cluster of the Genes")
 ```
 
 ### Heatmap
@@ -115,17 +132,28 @@ if(exists(".Random.seed")) rm(.Random.seed)
 imputed <- impute.knn(gene.expression.values)
 ```
 
-```{r Imputed Gene Expression Values by Gene}
-matplot(imputed$data, pch=20, cex=0.1, col=rgb(missing,0,0,(missing*0.9)+0.1),
-        xlab = "Genes", ylab = "Gene Expression Values", xlim=c(1,nrow(imputed$data)),
-        main = "Gene Expression Values by Gene")
+Matrix of imputed values only
+```{r}
+missing.points <- missing
+missing.points[!missing] <- NA
+missing.points[missing] <- imputed$data[missing]
+```
+
+```{r Gene Expression Values by Gene after imputation}
+matplot(imputed$data, pch=20, cex=0.1, col=rgb(0,0,0,0.1),
+        xlim=c(1,nrow(imputed$data)),
+        main = "Gene Expression Values by Gene after imputation", 
+        xlab = "Genes", ylab = "Gene Expression Values by Gene")
+matpoints(missing.points, pch=20, cex=0.1, col=rgb(1,0,0,0.5))
 legend("bottomright", pch = c(20,20), col = c("black", "red"), text.col = c("black", "red"), legend = c("former", "imputed"))
 ```
 
-```{r Imputed Gene Expression Values by Sample}
-matplot(t(imputed$data), pch=20, cex=1, col=rgb(missing,0,0,(missing*0.9)+0.1),
-        xlab = "Samples", ylab = "Gene Expression Values", xlim=c(1,ncol(imputed$data)),
-        main = "Gene Expression Values by Sample")
+```{r Gene Expression Values by Sample after imputation}
+matplot(t(imputed$data), pch=20, cex=1, col=rgb(0,0,0,0.1),
+        xlim=c(1,ncol(imputed$data)),
+        main = "Gene Expression Values by Sample after imputation",
+        xlab = "Samples", ylab = "Gene Expression Values")
+matpoints(t(missing.points), pch=20, cex=1, col=rgb(1,0,0,0.5))
 legend("bottomright", pch = c(20,20), col = c("black", "red"), text.col = c("black", "red"), legend = c("former", "imputed"))
 ```
 

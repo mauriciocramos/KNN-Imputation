@@ -40,17 +40,17 @@ Preparing data
 
 ``` r
 gene.expression.values <- khanmiss[-1, -(1:2)]
-rownames(gene.expression.values) <- 1:nrow(gene.expression.values)
-colnames(gene.expression.values) <- 1:ncol(gene.expression.values)
+rownames(gene.expression.values) <- paste0("G",1:nrow(gene.expression.values))
+colnames(gene.expression.values) <- paste0("S",1:ncol(gene.expression.values))
 gene.expression.values[] <- lapply(gene.expression.values[], function (x) as.numeric(levels(x)[x]))
-gene.expression.values <- as.matrix(gene.expression.values)
+gene.expression.values <- as.matrix(gene.expression.values)#[1:20, 1:4]
 str(gene.expression.values)
 ```
 
     ##  num [1:2308, 1:63] 0.773 -2.438 -0.483 -2.721 -1.217 ...
     ##  - attr(*, "dimnames")=List of 2
-    ##   ..$ : chr [1:2308] "1" "2" "3" "4" ...
-    ##   ..$ : chr [1:63] "1" "2" "3" "4" ...
+    ##   ..$ : chr [1:2308] "G1" "G2" "G3" "G4" ...
+    ##   ..$ : chr [1:63] "S1" "S2" "S3" "S4" ...
 
 Checking missing values
 -----------------------
@@ -74,9 +74,17 @@ Data patterns
 ### Histogram
 
 ``` r
-par(mfrow=c(1, 1), mar=c(4, 4, 2, 0), xaxt="s", yaxt="s", xaxs="r", yaxs="r")
-hist(gene.expression.values, pch=20, col=rgb(0,0,0,0.05), cex=0.1,
+hist(gene.expression.values, freq = FALSE, pch=20, col=rgb(0,0,0,0.03), cex=0.1,
      main = "Histogram of Gene Expression Values", xlab = "Gene Expression Values")
+## Normal Curve
+x <- gene.expression.values
+mean <- mean(gene.expression.values, na.rm = TRUE)
+sd <- sd(gene.expression.values, na.rm = TRUE)
+curve(dnorm(x, mean, sd), add = TRUE, col = "blue", lwd = 2)
+## Kernel density estimation
+lines(density(gene.expression.values, na.rm = TRUE), col = "red", lwd = 2)
+## Legend
+legend("topright", lwd = 2, col = c("blue", "red"), text.col = c("blue", "red"), legend = c("Normal Curve", "Kernel Density"))
 ```
 
 ![](README_files/figure-markdown_github/Histogram%20of%20Gene%20Expression%20Values-1.png)
@@ -85,8 +93,9 @@ hist(gene.expression.values, pch=20, col=rgb(0,0,0,0.05), cex=0.1,
 
 ``` r
 matplot(gene.expression.values, pch=20, cex=0.1, col=rgb(0,0,0,0.1),
-        xlab = "Genes", ylab = "Gene Expression Values", xlim=c(1,nrow(gene.expression.values)),
-        main = "Gene Expression Values by Gene")
+        xlim=c(1,nrow(gene.expression.values)),
+        main = "Gene Expression Values by Gene", 
+        xlab = "Genes", ylab = "Gene Expression Values")
 ```
 
 ![](README_files/figure-markdown_github/Gene%20Expression%20Values%20by%20Gene-1.png)
@@ -95,8 +104,9 @@ matplot(gene.expression.values, pch=20, cex=0.1, col=rgb(0,0,0,0.1),
 
 ``` r
 matplot(t(gene.expression.values), pch=20, cex=1, col=rgb(0,0,0,0.1),
-        xlab = "Samples", ylab = "Gene Expression Values", xlim=c(1,ncol(gene.expression.values)),
-        main = "Gene Expression Values by Samples")
+        xlim=c(1,ncol(gene.expression.values)),
+        main = "Gene Expression Values by Samples", 
+        xlab = "Samples", ylab = "Gene Expression Values")
 ```
 
 ![](README_files/figure-markdown_github/Gene%20Expression%20Values%20by%20Samples-1.png)
@@ -105,12 +115,32 @@ matplot(t(gene.expression.values), pch=20, cex=1, col=rgb(0,0,0,0.1),
 
 ``` r
 image(x = 1:ncol(gene.expression.values), y = 1:nrow(gene.expression.values), z = t(gene.expression.values),
-      ylim=c(nrow(gene.expression.values),1), col=1, xlab = "Samples", ylab = "Gene", main="Missing Gene Expression Values")
+      ylim=c(nrow(gene.expression.values),1), col=1, xlab = "Samples", ylab = "Genes", main="Missing Gene Expression Values")
 ```
 
 ![](README_files/figure-markdown_github/Gene%20Expression%20Matrix%20image-1.png)
 
-### Hierarchical clustering
+### Hierarchical cluster of the Samples
+
+``` r
+(hclust<- hclust(dist(t(gene.expression.values))))
+```
+
+    ## 
+    ## Call:
+    ## hclust(d = dist(t(gene.expression.values)))
+    ## 
+    ## Cluster method   : complete 
+    ## Distance         : euclidean 
+    ## Number of objects: 63
+
+``` r
+plot(hclust, xlab = "Sample distance", main = "Hierarchical cluster of the Samples")
+```
+
+![](README_files/figure-markdown_github/Hierarchical%20cluster%20of%20the%20Samples-1.png)
+
+### Hierarchical cluster of the Genes
 
 ``` r
 (hclust<- hclust(dist(gene.expression.values)))
@@ -124,13 +154,11 @@ image(x = 1:ncol(gene.expression.values), y = 1:nrow(gene.expression.values), z 
     ## Distance         : euclidean 
     ## Number of objects: 2308
 
-### Cluster Dendogram
-
 ``` r
-plot(hclust, hang=0, labels= FALSE)
+plot(hclust, hang=0.1, labels = FALSE, xlab = "Gene distance", main = "Hierarchical cluster of the Genes")
 ```
 
-![](README_files/figure-markdown_github/Gene%20Expression%20Cluster%20Dendogram-1.png)
+![](README_files/figure-markdown_github/Hierarchical%20cluster%20of%20the%20Genes-1.png)
 
 ### Heatmap
 
@@ -152,23 +180,35 @@ imputed <- impute.knn(gene.expression.values)
     ## Done cluster 1450 
     ## Done cluster 858
 
+Matrix of imputed values only
+
 ``` r
-matplot(imputed$data, pch=20, cex=0.1, col=rgb(missing,0,0,(missing*0.9)+0.1),
-        xlab = "Genes", ylab = "Gene Expression Values", xlim=c(1,nrow(imputed$data)),
-        main = "Gene Expression Values by Gene")
+missing.points <- missing
+missing.points[!missing] <- NA
+missing.points[missing] <- imputed$data[missing]
+```
+
+``` r
+matplot(imputed$data, pch=20, cex=0.1, col=rgb(0,0,0,0.1),
+        xlim=c(1,nrow(imputed$data)),
+        main = "Gene Expression Values by Gene after imputation", 
+        xlab = "Genes", ylab = "Gene Expression Values by Gene")
+matpoints(missing.points, pch=20, cex=0.1, col=rgb(1,0,0,0.5))
 legend("bottomright", pch = c(20,20), col = c("black", "red"), text.col = c("black", "red"), legend = c("former", "imputed"))
 ```
 
-![](README_files/figure-markdown_github/Imputed%20Gene%20Expression%20Values%20by%20Gene-1.png)
+![](README_files/figure-markdown_github/Gene%20Expression%20Values%20by%20Gene%20after%20imputation-1.png)
 
 ``` r
-matplot(t(imputed$data), pch=20, cex=1, col=rgb(missing,0,0,(missing*0.9)+0.1),
-        xlab = "Samples", ylab = "Gene Expression Values", xlim=c(1,ncol(imputed$data)),
-        main = "Gene Expression Values by Sample")
+matplot(t(imputed$data), pch=20, cex=1, col=rgb(0,0,0,0.1),
+        xlim=c(1,ncol(imputed$data)),
+        main = "Gene Expression Values by Sample after imputation",
+        xlab = "Samples", ylab = "Gene Expression Values")
+matpoints(t(missing.points), pch=20, cex=1, col=rgb(1,0,0,0.5))
 legend("bottomright", pch = c(20,20), col = c("black", "red"), text.col = c("black", "red"), legend = c("former", "imputed"))
 ```
 
-![](README_files/figure-markdown_github/Imputed%20Gene%20Expression%20Values%20by%20Sample-1.png)
+![](README_files/figure-markdown_github/Gene%20Expression%20Values%20by%20Sample%20after%20imputation-1.png)
 
 `rng.seed` is the seed used for the random number generator (default 362436069) for reproducibility.
 
