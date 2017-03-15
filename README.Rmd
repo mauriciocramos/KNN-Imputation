@@ -156,27 +156,3 @@ matplot(t(imputed$data), pch=20, cex=1, col=rgb(0,0,0,0.1),
 matpoints(t(missing.points), pch=20, cex=1, col=rgb(1,0,0,0.5))
 legend("bottomright", pch = c(20,20), col = c("black", "red"), text.col = c("black", "red"), legend = c("former", "imputed"))
 ```
-
-`rng.seed` is the seed used for the random number generator (default 362436069) for reproducibility.
-```{r}
-imputed$rng.seed # should be 362436069
-```
-`rng.state` is the state of the random number generator, if available, prior to the call to set.seed. Otherwise, it is NULL. If necessary, this can be used in the calling code to undo the side-effect of changing the random number generator sequence.
-```{r}
-imputed$rng.state # should be NULL
-```
-
-**Restoring the random number generation sequence changed before impute.knn()**
-
-```{r}
-set.seed(12345)
-saved.state <- .Random.seed
-# Assuming all goes well with no guarantees in case of error...
-.Random.seed <- impute.knn(gene.expression.values)$rng.state
-```
-
-**.Random.seed validation**
-
-```{r}
-sum(saved.state - .Random.seed) # should be zero!
-```
